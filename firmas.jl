@@ -61,26 +61,28 @@ end
 
 function loadImage(imageName::String, datasetFolder::String;
                    datasetType::DataType=Float32, resolution::Int=128)
-
-    # ruta completa con extensión .tif
+    
+    # Construir la ruta completa del archivo con extensión .tif
     filePath = joinpath(datasetFolder, imageName * ".tif")
-
-    # si no existe, devolvemos nothing
+    
+    # Verificar existencia
     if !isfile(filePath)
         return nothing
     end
-
-    # cargar la imagen
+    
+    # Cargar la imagen
     img = load(filePath)
-
-    # convertir a escala de grises
-    img = gray.(img)
-
-    # redimensionar
-    img = imresize(img, (resolution, resolution))
-
-    # convertir al tipo deseado (por defecto Float32)
-    return convert.(datasetType, img)
+    
+    # Convertir a escala de grises
+    img_gray = gray.(img)
+    
+    # Cambiar resolución
+    img_resized = imresize(img_gray, (resolution, resolution))
+    
+    # Convertir tipo de datos
+    img_typed = convert.(datasetType, img_resized)
+    
+    return img_typed
 end
 
 
@@ -95,11 +97,26 @@ end;
 
 
 function loadImagesNCHW(datasetFolder::String;
-    datasetType::DataType=Float32, resolution::Int=128)
-    #
-    # Codigo a desarrollar
-    #
-end;
+                         datasetType::DataType=Float32,
+                         resolution::Int=128)
+    
+    # Obtener todos los nombres de archivos .tif en la carpeta
+    imageNames = fileNamesFolder(datasetFolder, "tif")
+    
+    # Cargar todas las imágenes con broadcast de loadImage
+    images = loadImage.(imageNames, Ref(datasetFolder);
+                        datasetType=datasetType,
+                        resolution=resolution)
+    
+    # Filtrar posibles `nothing` si algún archivo no se cargó
+    images = filter(!isnothing, images)
+    
+    # Convertir el vector de imágenes a formato NCHW
+    imagesNCHW = convertImagesNCHW(images)
+    
+    return imagesNCHW
+end
+
 
 
 showImage(image      ::AbstractArray{<:Real,2}                                      ) = display(Gray.(image));
