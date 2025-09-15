@@ -1,2 +1,1 @@
-# Ignorar el dataset MNIST
-datasets/MNIST.jld2
+datasets/
