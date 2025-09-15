@@ -9,11 +9,18 @@ using DelimitedFiles
 using JLD2
 using Images
 
+
 function fileNamesFolder(folderName::String, extension::String)
-    #
-    # Codigo a desarrollar
-    #
-end;
+    extension = uppercase(extension)
+
+    files = filter(f -> endswith(uppercase(f), ".$extension"), readdir(folderName))
+    names = first.(splitext.(files))
+
+    return sort(names)
+end
+
+
+
 
 
 
