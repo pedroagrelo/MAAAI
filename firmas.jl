@@ -214,7 +214,6 @@ end
 
 
 
-
 function loadStreamLearningDataset(datasetFolder::String; datasetType::DataType=Float32)
     # Rutas de los archivos
     dataPath = joinpath(datasetFolder, "elec2_data.dat")
