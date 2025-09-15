@@ -25,20 +25,64 @@ end
 
 
 function loadDataset(datasetName::String, datasetFolder::String;
-    datasetType::DataType=Float32)
-    #
-    # Codigo a desarrollar
-    #
-end;
+                     datasetType::DataType=Float32)
+    
+    # Construir la ruta completa del archivo
+    filePath = joinpath(datasetFolder, datasetName * ".tsv")
+    
+    # Verificar que el archivo existe
+    if !isfile(filePath)
+        return nothing
+    end
+    
+    # Cargar todo el archivo con readdlm usando tabulador como separador
+    data = readdlm(filePath, '\t', String)
+    
+    # La primera fila son los encabezados
+    headers = data[1, :]
+    
+    # Buscar la columna que corresponde al target
+    target_col = findfirst(==("target"), headers)
+    
+    # Todas las filas excepto la primera
+    data_values = data[2:end, :]
+    
+    # Convertir las entradas al tipo deseado y eliminar la columna de target
+    inputs = parse.(datasetType, data_values[:, setdiff(1:end, target_col)])
+    
+    # Tomar la columna target y convertir a booleano
+    targets = data_values[:, target_col] .== "1"
+    
+    # Devolver la tupla (inputs, targets)
+    return (inputs, targets)
+end
 
 
 
 function loadImage(imageName::String, datasetFolder::String;
-    datasetType::DataType=Float32, resolution::Int=128)
-    #
-    # Codigo a desarrollar
-    #
-end;
+                   datasetType::DataType=Float32, resolution::Int=128)
+
+    # ruta completa con extensión .tif
+    filePath = joinpath(datasetFolder, imageName * ".tif")
+
+    # si no existe, devolvemos nothing
+    if !isfile(filePath)
+        return nothing
+    end
+
+    # cargar la imagen
+    img = load(filePath)
+
+    # convertir a escala de grises
+    img = gray.(img)
+
+    # redimensionar
+    img = imresize(img, (resolution, resolution))
+
+    # convertir al tipo deseado (por defecto Float32)
+    return convert.(datasetType, img)
+end
+
 
 
 function convertImagesNCHW(imageVector::Vector{<:AbstractArray{<:Real,2}})
