@@ -191,18 +191,62 @@ end
 
 
 function cyclicalEncoding(data::AbstractArray{<:Real,1})
-    #
-    # Codigo a desarrollar
-    #
-end;
+    # Calcular el intervalo discreto m
+    m = intervalDiscreteVector(data)
+    
+    # Rango de los datos
+    minD = minimum(data)
+    maxD = maximum(data)
+    
+    # Evitar división por cero si todos los datos son iguales
+    rangeD = maxD - minD
+    denom = rangeD + m > 0 ? rangeD + m : 1.0
+    
+    # Calcular los ángulos
+    angles = 2π .* (data .- minD) ./ denom
+    
+    # Codificación cíclica: senos y cosenos
+    sinValues = sin.(angles)
+    cosValues = cos.(angles)
+    
+    return (sinValues, cosValues)
+end
+
 
 
 
 function loadStreamLearningDataset(datasetFolder::String; datasetType::DataType=Float32)
-    #
-    # Codigo a desarrollar
-    #
-end;
+    # Rutas de los archivos
+    dataPath = joinpath(datasetFolder, "elec2_data.dat")
+    labelPath = joinpath(datasetFolder, "elec2_label.dat")
+    
+    # Verificar que existen
+    if !(isfile(dataPath) && isfile(labelPath))
+        return nothing
+    end
+    
+    # Cargar datos y etiquetas
+    dataRaw = readdlm(dataPath)
+    labelsRaw = vec(Bool.(readdlm(labelPath)))  # Convertir a booleano y vector
+    
+    # Eliminar columnas 1 (date) y 4 (nswprice)
+    dataProcessed = dataRaw[:, setdiff(1:size(dataRaw,2), [1,4])]
+    
+    # Tomar la columna del día (primera columna de dataProcessed)
+    dayColumn = dataProcessed[:,1]
+    
+    # Codificación cíclica
+    sinVals, cosVals = cyclicalEncoding(dayColumn)
+    
+    # Eliminar la columna del día de dataProcessed
+    dataWithoutDay = dataProcessed[:,2:end]
+    
+    # Concatenar senos y cosenos como primeras columnas
+    inputs = hcat(sinVals, cosVals, datasetType.(dataWithoutDay))
+    
+    return (inputs, labelsRaw)
+end
+
 
 
 
