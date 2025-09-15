@@ -125,11 +125,56 @@ showImage(imagesNCHW1::AbstractArray{<:Real,4}, imagesNCHW2::AbstractArray{<:Rea
 
 
 
-function loadMNISTDataset(datasetFolder::String; labels::AbstractArray{Int,1}=0:9, datasetType::DataType=Float32)
-    #
-    # Codigo a desarrollar
-    #
-end;
+
+function loadMNISTDataset(datasetFolder::String; 
+                          labels::AbstractArray{Int,1}=0:9, 
+                          datasetType::DataType=Float32)
+
+    # Ruta del archivo
+    filePath = joinpath(datasetFolder, "MNIST.jld2")
+    if !isfile(filePath)
+        return nothing
+    end
+
+    # Abrir archivo y extraer las variables
+    trainImages = nothing
+    trainTargets = nothing
+    testImages = nothing
+    testTargets = nothing
+
+    jldopen(filePath, "r") do file
+        all_keys = collect(keys(file))  # Obtener todas las claves
+         # Convertir cada imagen individualmente
+        trainImages = [datasetType.(img) for img in read(file, all_keys[1])]
+        trainTargets = read(file, all_keys[2])
+        testImages = [datasetType.(img) for img in read(file, all_keys[3])]
+        testTargets = read(file, all_keys[4])
+    end
+
+    # Filtrado de etiquetas
+    if -1 in labels
+        trainTargets[.!in.(trainTargets, [setdiff(labels,-1)])] .= -1
+        testTargets[.!in.(testTargets, [setdiff(labels,-1)])] .= -1
+        trainIndices = trues(length(trainTargets))
+        testIndices = trues(length(testTargets))
+    else
+        trainIndices = in.(trainTargets, [labels])
+        testIndices = in.(testTargets, [labels])
+    end
+
+    # Filtrar imágenes y targets
+    trainImagesFiltered = trainImages[trainIndices]
+    trainTargetsFiltered = trainTargets[trainIndices]
+    testImagesFiltered = testImages[testIndices]
+    testTargetsFiltered = testTargets[testIndices]
+
+    # Convertir a NCHW
+    trainImagesNCHW = convertImagesNCHW(trainImagesFiltered)
+    testImagesNCHW = convertImagesNCHW(testImagesFiltered)
+
+    return (trainImagesNCHW, trainTargetsFiltered, testImagesNCHW, testTargetsFiltered)
+end
+
 
 
 function intervalDiscreteVector(data::AbstractArray{<:Real,1})
