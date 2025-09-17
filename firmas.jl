@@ -258,10 +258,19 @@ using Flux
 indexOutputLayer(ann::Chain) = length(ann) - (ann[end]==softmax);
 
 function newClassCascadeNetwork(numInputs::Int, numOutputs::Int)
-    #
-    # Codigo a desarrollar
-    #
-end;
+    if numOutputs == 1
+        # Clasificación binaria → salida con 1 neurona y activación sigmoide
+        return Chain(
+            Dense(numInputs, 1, σ)
+        )
+    else
+        # Clasificación multiclase → salida lineal + softmax
+        return Chain(
+            Dense(numInputs, numOutputs, identity),
+            softmax
+        )
+    end
+end
 
 function addClassCascadeNeuron(previousANN::Chain; transferFunction::Function=σ)
     #
