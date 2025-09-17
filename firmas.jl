@@ -258,15 +258,53 @@ using Flux
 indexOutputLayer(ann::Chain) = length(ann) - (ann[end]==softmax);
 
 function newClassCascadeNetwork(numInputs::Int, numOutputs::Int)
-    #
-    # Codigo a desarrollar
-    #
+        if numOutputs == 1
+        # Clasificación binaria → salida con 1 neurona y activación sigmoide
+        return Chain(
+            Dense(numInputs, 1, σ)
+        )
+    else
+        # Clasificación multiclase → salida lineal + softmax
+        return Chain(
+            Dense(numInputs, numOutputs, identity),
+            softmax
+        )
+    end
 end;
 
 function addClassCascadeNeuron(previousANN::Chain; transferFunction::Function=σ)
-    #
-    # Codigo a desarrollar
-    #
+
+  # Localizar capas
+    idx_out = indexOutputLayer(previousANN)
+    outputLayer    = previousANN[idx_out]
+    previousLayers = previousANN[1:(idx_out-1)]
+
+    # Número de entradas y salidas de la capa de salida
+    numInputsOutputLayer  = size(outputLayer.weight, 2)
+    numOutputsOutputLayer = size(outputLayer.weight, 1)
+
+    # Nueva capa oculta (SkipConnection)
+    newHidden = SkipConnection(
+        Dense(numInputsOutputLayer, 1, transferFunction),
+        (mx, x) -> vcat(x, mx)
+    )
+
+    # Nueva capa de salida (según el caso de clasificación)
+    if idx_out == length(previousANN)   # 2 clases
+        newOutput = Dense(numInputsOutputLayer + 1, numOutputsOutputLayer, outputLayer.σ)
+        ann = Chain(previousLayers..., newHidden, newOutput)
+    else                                # más de 2 clases
+        newOutput = Dense(numInputsOutputLayer + 1, numOutputsOutputLayer, identity)
+        ann = Chain(previousLayers..., newHidden, newOutput, softmax)
+    end
+
+    # Inicializar pesos de la nueva capa de salida
+    newOutput.weight[:, 1:numInputsOutputLayer] .= outputLayer.weight
+    newOutput.weight[:, end] .= 0.0
+    newOutput.bias .= outputLayer.bias
+
+    return ann
+
 end;
 
 function trainClassANN!(ann::Chain, trainingDataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}}, trainOnly2LastLayers::Bool;
