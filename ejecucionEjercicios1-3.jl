@@ -19,8 +19,8 @@ Pkg.status("Flux")
 # Es posible que con otras versiones los resultados sean distintos, estando las funciones bien, sobre todo en la funciones que implican alguna componente aleatoria
 
 # Para la correcta ejecución de este archivo, los datasets estarán en las siguientes carpetas:
-datasetFolder = "C:/Users/User/Documents/3º/1º_CUATRI/MAAAI/datasets"; # Incluye el dataset MNIST
-imageFolder = "C:/Users/User/Documents/3º/1º_CUATRI/MAAAI/datasets/images";
+datasetFolder = "datasets"; # Incluye el dataset MNIST
+imageFolder = "datasets/images";
 # Cambiadlas por las carpetas donde tengáis los datasets y las imágenes
 
 @assert(isdir(datasetFolder))

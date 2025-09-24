@@ -8,6 +8,7 @@ import FileIO.load
 using DelimitedFiles
 using JLD2
 using Images
+using Statistics
 
 
 function fileNamesFolder(folderName::String, extension::String)
@@ -258,7 +259,7 @@ using Flux
 indexOutputLayer(ann::Chain) = length(ann) - (ann[end]==softmax);
 
 function newClassCascadeNetwork(numInputs::Int, numOutputs::Int)
-    if numOutputs == 2
+    if numOutputs == 1
         # Clasificación binaria → salida con 1 neurona y activación sigmoide
         return Chain(
             Dense(numInputs, 1, σ)
@@ -308,11 +309,52 @@ function addClassCascadeNeuron(previousANN::Chain; transferFunction::Function=σ
 end;
 
 function trainClassANN!(ann::Chain, trainingDataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}}, trainOnly2LastLayers::Bool;
-    maxEpochs::Int=1000, minLoss::Real=0.0, learningRate::Real=0.001, minLossChange::Real=1e-7, lossChangeWindowSize::Int=5)
-    #
-    # Codigo a desarrollar
-    #
-end;
+    maxEpochs::Int=1000, minLoss::Real=0.0, learningRate::Real=0.001, minLossChange::Real=1e-7, lossChangeWindowSize::Int=5) 
+    X, Y = trainingDataset
+    @show size(X)
+    @show size(Y)
+    @show size(ann(X))
+    println("---- Depuración dentro de trainClassANN! ----")
+    println("size(X): ", size(X))
+    println("size(Y): ", size(Y))
+    println("size(ann(X)): ", size(ann(X)))
+    println("Número de salidas de la red: ", size(ann(X), 1))
+    println("--------------------------------------------")
+
+
+    # --- función de pérdida ---
+    loss(m, x, y) = Flux.Losses.logitcrossentropy(m(x), y)
+
+    # --- inicializar optimizador ---
+    opt = Adam(learningRate)
+    opt_state = setup(opt, ann)
+
+    # --- historial ---
+    loss_history = Float32[]
+    recent_losses = Float32[]
+
+    for epoch in 1:maxEpochs
+        grads = gradient(m -> loss(m, X, Y), ann)
+        opt_state, ann = update(opt_state, ann, grads[1])
+
+        current_loss = loss(ann, X, Y)
+        push!(loss_history, current_loss)
+
+        push!(recent_losses, current_loss)
+        if length(recent_losses) > lossChangeWindowSize
+            popfirst!(recent_losses)
+            if maximum(recent_losses) - minimum(recent_losses) < minLossChange
+                break
+            end
+        end
+
+        if current_loss < minLoss
+            break
+        end
+    end
+
+    return loss_history
+end
 
 
 function trainClassCascadeANN(maxNumNeurons::Int,
