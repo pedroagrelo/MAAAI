@@ -3,7 +3,7 @@
 # Archivo de pruebas para realizar autoevaluación de algunas funciones de los ejercicios
 
 # Importamos el archivo con las soluciones a los ejercicios
-include("soluciones.jl");
+include("firmas.jl");
 #   Cambiar "soluciones.jl" por el nombre del archivo que contenga las funciones desarrolladas
 
 
@@ -19,8 +19,10 @@ Pkg.status("Flux")
 # Es posible que con otras versiones los resultados sean distintos, estando las funciones bien, sobre todo en la funciones que implican alguna componente aleatoria
 
 # Para la correcta ejecución de este archivo, los datasets estarán en las siguientes carpetas:
-datasetFolder = "../datasets"; # Incluye el dataset MNIST
-imageFolder = "../datasets/images";
+
+
+datasetFolder = "D:/Escritorio/Carpeta Universidade/2025-2026/MODELOS DE APRENDIZAJE AUTOMATICO/Practica 1/DATASETS/datasets"; # Incluye el dataset MNIST
+imageFolder = "D:/Escritorio/Carpeta Universidade/2025-2026/MODELOS DE APRENDIZAJE AUTOMATICO/Practica 1/DATASETS/datasets/images";
 # Cambiadlas por las carpetas donde tengáis los datasets y las imágenes
 
 @assert(isdir(datasetFolder))
