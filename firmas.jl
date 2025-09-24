@@ -321,39 +321,49 @@ function trainClassANN!(ann::Chain, trainingDataset::Tuple{AbstractArray{<:Real,
     println("Número de salidas de la red: ", size(ann(X), 1))
     println("--------------------------------------------")
 
-
     # --- función de pérdida ---
-    loss(m, x, y) = Flux.Losses.logitcrossentropy(m(x), y)
+    #loss(m, x, y) = Flux.Losses.logitcrossentropy(m(x), y)
+    loss(m, x, y) = (size(y,1) == 1) ? Flux.Losses.binarycrossentropy(m(x), y) : Flux.Losses.crossentropy(m(x), y)
 
-    # --- inicializar optimizador ---
-    opt = Adam(learningRate)
-    opt_state = setup(opt, ann)
+
+    # --- optimizador ---
+    opt_state = Flux.setup(Adam(learningRate), ann)
+
+    # congelar capas si procede
+    if trainOnly2LastLayers
+        Flux.freeze!(opt_state.layers[1:(indexOutputLayer(ann)-2)])
+    end
 
     # --- historial ---
-    loss_history = Float32[]
-    recent_losses = Float32[]
+    trainingLosses = Float32[]
+    push!(trainingLosses, loss(ann, X, Y))   # ciclo 0
 
     for epoch in 1:maxEpochs
-        grads = gradient(m -> loss(m, X, Y), ann)
-        opt_state, ann = update(opt_state, ann, grads[1])
+        # calcula gradientes directamente sobre ann
+        grads = Flux.gradient(ann -> loss(ann, X, Y), ann)
 
+        # actualiza la red con el optimizador
+        Flux.update!(opt_state, ann, grads)
+
+        # calcular pérdida actual
         current_loss = loss(ann, X, Y)
-        push!(loss_history, current_loss)
+        push!(trainingLosses, Float32(current_loss))
 
-        push!(recent_losses, current_loss)
-        if length(recent_losses) > lossChangeWindowSize
-            popfirst!(recent_losses)
-            if maximum(recent_losses) - minimum(recent_losses) < minLossChange
+        # --- criterios de parada ---
+        if current_loss <= minLoss
+            break
+        end
+
+        if length(trainingLosses) >= lossChangeWindowSize
+            lossWindow = trainingLosses[end-lossChangeWindowSize+1:end]
+            minLossValue, maxLossValue = extrema(lossWindow)
+            if (maxLossValue - minLossValue) / minLossValue <= minLossChange
                 break
             end
         end
-
-        if current_loss < minLoss
-            break
-        end
     end
 
-    return loss_history
+    return trainingLosses
 end
 
 

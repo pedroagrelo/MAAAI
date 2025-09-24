@@ -162,6 +162,7 @@ seed!(1); newANN = addClassCascadeNeuron(newAnn; transferFunction=σ)
 trainingLosses = trainClassANN!(newANN, (inputs', reshape(targets, 1, :)), true;
     maxEpochs=5, minLoss=0.0, learningRate=0.01, minLossChange=1e-6, lossChangeWindowSize=3)
 @assert(eltype(trainingLosses)==Float32);
+println("Pérdidas: ", trainingLosses[1:min(end, 6)])
 @assert(all(isapprox.(trainingLosses, Float32[0.70495284, 0.69371563, 0.68812746, 0.6846968, 0.6808723, 0.67615265])))
 @assert(all(isapprox.(newANN.layers[1].layers.bias, [0.0])));
 @assert(all(isapprox.(newANN.layers[2].layers.bias, [-0.011772233])));
