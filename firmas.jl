@@ -363,7 +363,7 @@ function trainClassANN!(ann::Chain, trainingDataset::Tuple{AbstractArray{<:Real,
     end
 
     return trainingLosses
-end;
+end
 
 
 function trainClassCascadeANN(maxNumNeurons::Int,
@@ -457,15 +457,24 @@ end
 
 
 function stepHopfield(ann::HopfieldNet, S::AbstractArray{<:Real,1})
-    #
-    # Codigo a desarrollar
-    #
-end;
+    # Convertir entrada a Float32
+    Sf = Float32.(S)
+    # Multiplicación por la matriz de pesos
+    raw = ann * Sf
+    # Umbralización con sign, garantizando solo {-1, 1}
+    out = sign.(raw)
+    return Float32.(out)
+end
+
 function stepHopfield(ann::HopfieldNet, S::AbstractArray{<:Bool,1})
-    #
-    # Codigo a desarrollar
-    #
-end;
+    # Convertir de Bool a {-1, 1}
+    realS = (2 .* Int8.(S)) .- 1
+    # Llamar al método de Reales
+    out_real = stepHopfield(ann, realS)
+    # Convertir de {-1, 1} a Bool (>= 0 → true, < 0 → false)
+    return out_real .>= 0
+end
+
 
 
 function runHopfield(ann::HopfieldNet, S::AbstractArray{<:Real,1})
