@@ -363,25 +363,55 @@ function trainClassANN!(ann::Chain, trainingDataset::Tuple{AbstractArray{<:Real,
     end
 
     return trainingLosses
-end
+end;
 
 
 function trainClassCascadeANN(maxNumNeurons::Int,
     trainingDataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}};
     transferFunction::Function=σ,
     maxEpochs::Int=1000, minLoss::Real=0.0, learningRate::Real=0.001, minLossChange::Real=1e-7, lossChangeWindowSize::Int=5)
-    #
-    # Codigo a desarrollar
-    #
+
+    Xraw, Yraw = trainingDataset
+
+    X = Float32.(Xraw')        # trasponer X → columnas = instancias
+    Y = Bool.(Yraw')           # trasponer Y → columnas = etiquetas
+
+    ann = newClassCascadeNetwork(size(X,1), size(Y,1))   # red inicial sin ocultas
+    trainingLosses = trainClassANN!(ann, (X, Y), false;  # primer entrenamiento
+        maxEpochs=maxEpochs, minLoss=minLoss, learningRate=learningRate,
+        minLossChange=minLossChange, lossChangeWindowSize=lossChangeWindowSize)
+
+    for _ in 1:maxNumNeurons
+        ann = addClassCascadeNeuron(ann; transferFunction=transferFunction)
+
+        # entrenar solo últimas capas
+        if indexOutputLayer(ann) > 2
+            newLosses = trainClassANN!(ann, (X, Y), true;
+                maxEpochs=maxEpochs, minLoss=minLoss, learningRate=learningRate,
+                minLossChange=minLossChange, lossChangeWindowSize=lossChangeWindowSize)
+            append!(trainingLosses, newLosses[2:end])   # evitar repetir el primer valor
+        end
+
+        # entrenar toda la red
+        newLosses = trainClassANN!(ann, (X, Y), false;
+            maxEpochs=maxEpochs, minLoss=minLoss, learningRate=learningRate,
+            minLossChange=minLossChange, lossChangeWindowSize=lossChangeWindowSize)
+        append!(trainingLosses, newLosses[2:end])
+    end
+
+    return (ann, trainingLosses)
 end;
 
 function trainClassCascadeANN(maxNumNeurons::Int,
     trainingDataset::  Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,1}};
     transferFunction::Function=σ,
     maxEpochs::Int=100, minLoss::Real=0.0, learningRate::Real=0.01, minLossChange::Real=1e-7, lossChangeWindowSize::Int=5)
-    #
-    # Codigo a desarrollar
-    #
+    X, y = trainingDataset
+    Y = reshape(y, :, 1)  # vector y → matriz columna
+    return trainClassCascadeANN(maxNumNeurons, (X, Y);
+        transferFunction=transferFunction,
+        maxEpochs=maxEpochs, minLoss=minLoss, learningRate=learningRate,
+        minLossChange=minLossChange, lossChangeWindowSize=lossChangeWindowSize)
 end;
     
 
