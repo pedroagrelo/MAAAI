@@ -343,20 +343,37 @@ using Random
 HopfieldNet = Array{Float32,2}
 
 function trainHopfield(trainingSet::AbstractArray{<:Real,2})
-    #
-    # Codigo a desarrollar
-    #
-end;
+    # trainingSet: N x m (N instancias por filas, m atributos por columnas)
+    N = size(trainingSet, 1)
+    # Calcula W = (1/N) * S^T * S
+    W = (trainingSet' * trainingSet) ./ N
+    # Convertir a Float32
+    Wf = Array{Float32,2}(W)
+    # Poner diagonal a 0 (se permite bucle en esta versión)
+    for i in 1:size(Wf,1)
+        Wf[i,i] = 0.0f0
+    end
+    return Wf
+end
+
 function trainHopfield(trainingSet::AbstractArray{<:Bool,2})
-    #
-    # Codigo a desarrollar
-    #
-end;
+    # Convertir booleanos (0/1) a -1/1 sin bucles y llamar al método Real,2
+    # (2 .* trainingSet) .- 1  -> valores en { -1, 1 } (tipo Bool promocionado a Int)
+    realset = Float32.((2 .* trainingSet) .- 1)
+    return trainHopfield(realset)
+end
+
 function trainHopfield(trainingSetNCHW::AbstractArray{<:Bool,4})
-    #
-    # Codigo a desarrollar
-    #
-end;
+    # trainingSetNCHW: N x C x H x W (NCHW)
+    N = size(trainingSetNCHW, 1)
+    m = Int(prod(size(trainingSetNCHW)[2:end]))  # C*H*W
+    # Convertir a matriz 2D: N filas (una por imagen), m columnas (atributos)
+    training2d = reshape(trainingSetNCHW, N, m)
+    # Convertir a -1/1 y llamar al método 2D
+    realset2d = Float32.((2 .* training2d) .- 1)
+    return trainHopfield(realset2d)
+end
+
 
 function stepHopfield(ann::HopfieldNet, S::AbstractArray{<:Real,1})
     #
