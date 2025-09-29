@@ -308,11 +308,62 @@ function addClassCascadeNeuron(previousANN::Chain; transferFunction::Function=σ
 end;
 
 function trainClassANN!(ann::Chain, trainingDataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}}, trainOnly2LastLayers::Bool;
-    maxEpochs::Int=1000, minLoss::Real=0.0, learningRate::Real=0.001, minLossChange::Real=1e-7, lossChangeWindowSize::Int=5)
-    #
-    # Codigo a desarrollar
-    #
-end;
+    maxEpochs::Int=1000, minLoss::Real=0.0, learningRate::Real=0.001, minLossChange::Real=1e-7, lossChangeWindowSize::Int=5) 
+    X, Y = trainingDataset
+    @show size(X)
+    @show size(Y)
+    @show size(ann(X))
+    println("---- Depuración dentro de trainClassANN! ----")
+    println("size(X): ", size(X))
+    println("size(Y): ", size(Y))
+    println("size(ann(X)): ", size(ann(X)))
+    println("Número de salidas de la red: ", size(ann(X), 1))
+    println("--------------------------------------------")
+
+    # --- función de pérdida ---
+    #loss(m, x, y) = Flux.Losses.logitcrossentropy(m(x), y)
+    loss(m, x, y) = (size(y,1) == 1) ? Flux.Losses.binarycrossentropy(m(x), y) : Flux.Losses.crossentropy(m(x), y)
+
+
+    # --- optimizador ---
+    opt_state = Flux.setup(Adam(learningRate), ann)
+
+    # congelar capas si procede
+    if trainOnly2LastLayers
+        Flux.freeze!(opt_state.layers[1:(indexOutputLayer(ann)-2)])
+    end
+
+    # --- historial ---
+    trainingLosses = Float32[]
+    push!(trainingLosses, loss(ann, X, Y))   # ciclo 0
+
+    for epoch in 1:maxEpochs
+        # calcula gradientes directamente sobre ann
+        grads = Flux.gradient(ann -> loss(ann, X, Y), ann)
+
+        # actualiza la red con el optimizador
+        Flux.update!(opt_state, ann, grads)
+
+        # calcular pérdida actual
+        current_loss = loss(ann, X, Y)
+        push!(trainingLosses, Float32(current_loss))
+
+        # --- criterios de parada ---
+        if current_loss <= minLoss
+            break
+        end
+
+        if length(trainingLosses) >= lossChangeWindowSize
+            lossWindow = trainingLosses[end-lossChangeWindowSize+1:end]
+            minLossValue, maxLossValue = extrema(lossWindow)
+            if (maxLossValue - minLossValue) / minLossValue <= minLossChange
+                break
+            end
+        end
+    end
+
+    return trainingLosses
+end
 
 
 function trainClassCascadeANN(maxNumNeurons::Int,
