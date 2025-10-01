@@ -561,14 +561,39 @@ function classifyMNISTImages(imageArray::AbstractArray{<:Bool,4}, templateInputs
         outputs[indicesCoincidence] .= Int(templateLabels[i])          # asignar etiqueta
     end
 
-    return outputs #forzar a q salgan enteros??
+    return outputs #forzar a q salgan enteros
 end;
 
 function calculateMNISTAccuracies(datasetFolder::String, labels::AbstractArray{Int,1}, threshold::Real)
-    #
-    # Codigo a desarrollar
-    #
+    trainX, trainY, testX, testY = loadMNISTDataset(datasetFolder; labels=labels, datasetType=Float32)
+    templateX, templateY = averageMNISTImages(trainX, trainY)
+
+    #Umbralizar train, test y plantillas
+    trainB     = trainX     .>= threshold
+    testB      = testX      .>= threshold
+    templateB  = templateX  .>= threshold
+
+    hop = trainHopfield(templateB)
+
+    #Ejecutar Hopfield sobre train/test (en formato ±1 para evitar problemas de tipos)
+    to_pm1(A) = Float32.(2 .* A .- 1)                 
+    trainStates = runHopfield(hop, to_pm1(trainB))   
+    testStates  = runHopfield(hop, to_pm1(testB))
+
+    # Comparar píxel a píxel con las plantillas
+    trainStatesB = trainStates .>= 0
+    testStatesB  = testStates  .>= 0
+
+    trainPred = classifyMNISTImages(trainStatesB, templateB, templateY)
+    testPred  = classifyMNISTImages(testStatesB,  templateB, templateY)
+
+    #Calcular exactitud
+    trainAcc = sum(trainPred .== trainY) / length(trainY)
+    testAcc  = sum(testPred  .== testY)  / length(testY)
+
+    return (trainAcc, testAcc)
 end;
+
 
 
 
