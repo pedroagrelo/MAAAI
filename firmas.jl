@@ -504,21 +504,32 @@ end;
 
 
 function addNoise(datasetNCHW::AbstractArray{<:Bool,4}, ratioNoise::Real)
-    #
-    # Codigo a desarrollar
-    #
+    noiseSet = copy(datasetNCHW)  
+
+    indices = randperm(length(noiseSet))[1:Int(round(length(noiseSet) * ratioNoise))]
+
+    # Invertir los bits seleccionados
+    noiseSet[indices] .= .!noiseSet[indices]
+
+    return noiseSet
 end;
 
 function cropImages(datasetNCHW::AbstractArray{<:Bool,4}, ratioCrop::Real)
-    #
-    # Codigo a desarrollar
-    #
+    cropSet = copy(datasetNCHW)  
+    
+    indices = (size(datasetNCHW, 4) - Int(floor(ratioCrop * size(datasetNCHW, 4))) + 1) : size(datasetNCHW, 4)
+
+    # Poner esos bits a 0 (false)
+    cropSet[:,:,:,indices] .= false
+
+    return cropSet
+
 end;
 
 function randomImages(numImages::Int, resolution::Int)
-    #
-    # Codigo a desarrollar
-    #
+    # Genera números aleatorios uniformes en [0,1)
+    # y los convierte en Bool con .>= 0.5
+    return rand(numImages, 1, resolution, resolution) .>= 0.5
 end;
 
 function averageMNISTImages(imageArray::AbstractArray{<:Real,4}, labelArray::AbstractArray{Int,1})
