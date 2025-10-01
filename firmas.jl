@@ -533,15 +533,35 @@ function randomImages(numImages::Int, resolution::Int)
 end;
 
 function averageMNISTImages(imageArray::AbstractArray{<:Real,4}, labelArray::AbstractArray{Int,1})
-    #
-    # Codigo a desarrollar
-    #
+    labels = unique(labelArray)                   # dígitos únicos
+    N = length(labels)                            # número de dígitos
+    C, H, W = size(imageArray)[2:4]              # canales, alto, ancho
+
+    # Crear matriz de salida en formato NCHW
+    outputArray = similar(imageArray, eltype(imageArray), N, C, H, W)
+
+    for i in 1:N
+        digit = labels[i]
+        # seleccionar imágenes de ese dígito y promediar
+        averaged = dropdims(mean(imageArray[labelArray .== digit, :, :, :], dims=1), dims=1)
+        outputArray[i, :, :, :] .= averaged      # asignar a la matriz de salida
+    end
+
+    return (outputArray, labels)
 end;
 
 function classifyMNISTImages(imageArray::AbstractArray{<:Bool,4}, templateInputs::AbstractArray{<:Bool,4}, templateLabels::AbstractArray{Int,1})
-    #
-    # Codigo a desarrollar
-    #
+    N = size(imageArray, 1)                    # número de imágenes a clasificar
+    outputs = fill(-1, N)                      # vector de salida inicializado a -1
+
+    # --- bucle sobre las imágenes de la plantilla ---
+    for i in 1:length(templateLabels)
+        template = templateInputs[[i], :, :, :]                   # plantilla en formato NCHW
+        indicesCoincidence = vec(all(imageArray .== template, dims=[3,4]))  # coincidencias por pixel
+        outputs[indicesCoincidence] .= Int(templateLabels[i])          # asignar etiqueta
+    end
+
+    return outputs #forzar a q salgan enteros??
 end;
 
 function calculateMNISTAccuracies(datasetFolder::String, labels::AbstractArray{Int,1}, threshold::Real)
