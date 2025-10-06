@@ -615,7 +615,8 @@ predict(model, inputs::AbstractArray) = MLJ.predict(model, MLJ.table(inputs));
 using Base.Iterators
 using StatsBase
 
-Batch = Tuple{AbstractArray{<:Real,2}, AbstractArray{<:Any,1}}
+const Batch   = Tuple{AbstractMatrix{<:Real}, AbstractVector}
+const Batches = AbstractVector{<:Batch}
 
 
 function batchInputs(batch::Batch)
