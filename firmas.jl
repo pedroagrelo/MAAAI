@@ -607,6 +607,7 @@ end;
 using MLJ, LIBSVM, MLJLIBSVMInterface
 SVMClassifier = MLJ.@load SVC pkg=LIBSVM verbosity=0
 import Main.predict
+using Random: shuffle
 predict(model, inputs::AbstractArray) = MLJ.predict(model, MLJ.table(inputs));
 
 
@@ -618,41 +619,33 @@ Batch = Tuple{AbstractArray{<:Real,2}, AbstractArray{<:Any,1}}
 
 
 function batchInputs(batch::Batch)
-    #
-    # Codigo a desarrollar
-    #
+    return batch[1]
 end;
 
 function batchTargets(batch::Batch)
-    #
-    # Codigo a desarrollar
-    #
+    return batch[2]
 end;
 
 function batchLength(batch::Batch)
-    #
-    # Codigo a desarrollar
-    #
+    return size(batch[1], 1)
 end;
 
 function selectInstances(batch::Batch, indices::Any)
-    #
-    # Codigo a desarrollar
-    #
+    return (batchInputs(batch)[indices, :], batchTargets(batch)[indices])
 end;
 
 function joinBatches(batch1::Batch, batch2::Batch)
-    #
-    # Codigo a desarrollar
-    #
+    return (vcat(batchInputs(batch1), batchInputs(batch2)), vcat(batchTargets(batch1), batchTargets(batch2)))
 end;
-
 
 function divideBatches(dataset::Batch, batchSize::Int; shuffleRows::Bool=false)
-    #
-    # Codigo a desarrollar
-    #
+    N = batchLength(dataset)
+    idx = 1:N
+    idx = shuffleRows ? shuffle(idx) : idx
+    parts = Base.Iterators.partition(idx, batchSize)
+    [selectInstances(dataset, collect(p)) for p in parts]
 end;
+
 
 function trainSVM(dataset::Batch, kernel::String, C::Real;
     degree::Real=1, gamma::Real=2, coef0::Real=0.,
@@ -671,6 +664,7 @@ end;
 
 
 
+ 
 
 
 # ----------------------------------------------------------------------------------------------
