@@ -608,7 +608,7 @@ using MLJ, LIBSVM, MLJLIBSVMInterface
 SVMClassifier = MLJ.@load SVC pkg=LIBSVM verbosity=0
 import Main.predict
 using Random: shuffle
-predict(model, inputs::AbstractArray) = MLJ.predict(model, MLJ.table(inputs));
+predict(model, inputs::AbstractArray) = (outputs = MLJ.predict(model, MLJ.table(inputs)); return levels(outputs)[int(outputs)]; )
 
 
 
@@ -744,10 +744,10 @@ end
 
 
 function initializeStreamLearningData(datasetFolder::String, windowSize::Int, batchSize::Int)
-    #
-    # Codigo a desarrollar
-    #
-end;
+    
+end
+
+
 
 function addBatch!(memory::Batch, newBatch::Batch)
     #
@@ -770,10 +770,18 @@ function streamLearning_ISVM(datasetFolder::String, windowSize::Int, batchSize::
 end;
 
 function euclideanDistances(dataset::Batch, instance::AbstractArray{<:Real,1})
-    #
-    # Codigo a desarrollar
-    #
-end;
+    # Diferencias: restar instance (traspuesta) a cada fila del dataset
+    diffs = batchInputs(dataset) .- instance'          # size: N x M
+
+    # Elevar al cuadrado y sumar por fila (dims=2)
+    sumsq = sum(diffs.^2, dims=2)                     # size: N x 1
+
+    # Raíz cuadrada y convertir a vector
+    distances = vec(sqrt.(sumsq))                     # size: N
+
+    return distances
+end
+
 
 function nearestElements(dataset::Batch, instance::AbstractArray{<:Real,1}, k::Int)
     #
