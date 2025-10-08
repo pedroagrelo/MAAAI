@@ -651,17 +651,87 @@ end;
 function trainSVM(dataset::Batch, kernel::String, C::Real;
     degree::Real=1, gamma::Real=2, coef0::Real=0.,
     supportVectors::Batch=( Array{eltype(dataset[1]),2}(undef,0,size(dataset[1],2)) , Array{eltype(dataset[2]),1}(undef,0) ) )
-    #
-    # Codigo a desarrollar
-    #
-end;
+
+    # --- Concatenar supportVectors (si tiene instancias) con el dataset (FIFO: supportVectors primero) ---
+    N_support = batchLength(supportVectors)
+    fullDataset = N_support > 0 ? joinBatches(supportVectors, dataset) : dataset
+
+    # --- Crear modelo con la sintaxis pedida (usando LIBSVM.Kernel.*) ---
+    kernel_symbol = kernel=="linear"  ? LIBSVM.Kernel.Linear  :
+                    kernel=="rbf"     ? LIBSVM.Kernel.RadialBasis :
+                    kernel=="poly"    ? LIBSVM.Kernel.Polynomial :
+                    kernel=="sigmoid" ? LIBSVM.Kernel.Sigmoid : nothing
+
+    if kernel_symbol === nothing
+        error("Kernel '$kernel' no reconocido. Usa: linear, rbf, poly, sigmoid.")
+    end
+
+    model = SVMClassifier(
+        kernel = kernel_symbol,
+        cost   = Float64(C),
+        gamma  = Float64(gamma),
+        degree = Int32(degree),
+        coef0  = Float64(coef0)
+    )
+
+    # --- Crear machine sobre el conjunto concatenado (no sobre el dataset original sin soporte) ---
+    Xtable = MLJ.table(batchInputs(fullDataset))
+    ycat   = categorical(batchTargets(fullDataset))
+    mach = machine(model, Xtable, ycat)
+
+    # --- Entrenar ---
+    MLJ.fit!(mach)
+
+    # --- Extraer índices de vectores de soporte (ordenados) ---
+    indicesNewSupportVectors = sort(mach.fitresult[1].SVs.indices)
+
+    # --- Separar índices que pertenecen al supportVectors pasado y los del dataset original ---
+    # Recuerda: en fullDataset, las primeras N_support filas corresponden a supportVectors pasado
+    is_from_old_support = indicesNewSupportVectors .<= N_support
+    old_support_indices = collect(indicesNewSupportVectors[is_from_old_support])               # indices en supportVectors pasado
+    new_dataset_indices = collect(indicesNewSupportVectors[.!is_from_old_support] .- N_support) # indices en dataset original (ajustadas)
+
+    # Asegurar tipo Integer
+    old_support_indices = Int.(old_support_indices)
+    new_dataset_indices = Int.(new_dataset_indices)
+
+    # --- Construir el Batch de vectores de soporte resultantes ---
+    # seleccionar instancias de supportVectors (puede ser vacío) y del dataset original (puede ser vacío)
+    sv_from_old = isempty(old_support_indices) ? (Array{eltype(supportVectors[1]),2}(undef,0,size(supportVectors[1],2)), Array{eltype(supportVectors[2]),1}(undef,0)) : selectInstances(supportVectors, old_support_indices)
+    sv_from_dataset = isempty(new_dataset_indices) ? (Array{eltype(dataset[1]),2}(undef,0,size(dataset[1],2)), Array{eltype(dataset[2]),1}(undef,0)) : selectInstances(dataset, new_dataset_indices)
+
+    # concatenar (primero los antiguos supportVectors, luego los del dataset original)
+    supportBatch = joinBatches(sv_from_old, sv_from_dataset)
+
+    return (mach, supportBatch, (old_support_indices, new_dataset_indices))
+end
+
 
 function trainSVM(batches::AbstractArray{<:Batch,1}, kernel::String, C::Real;
     degree::Real=1, gamma::Real=2, coef0::Real=0.)
-    #
-    # Codigo a desarrollar
-    #
-end;
+
+    if length(batches) == 0
+        error("El vector de batches está vacío.")
+    end
+
+    # Inicializar supportVectors vacío con tipos adecuados (tomando tipos del primer batch)
+    first_batch = batches[1]
+    empty_support = ( Array{eltype(first_batch[1]),2}(undef,0,size(first_batch[1],2)),
+                      Array{eltype(first_batch[2]),1}(undef,0) )
+
+    currentSupport = empty_support
+    last_mach = nothing
+
+    # Único bucle permitido: iterar por los batches en orden y actualizar el support set
+    for b in batches
+        mach, newSupport, _ = trainSVM(b, kernel, C; degree=degree, gamma=gamma, coef0=coef0, supportVectors=currentSupport)
+        currentSupport = newSupport
+        last_mach = mach
+    end
+
+    return last_mach
+end
+
 
 
 
