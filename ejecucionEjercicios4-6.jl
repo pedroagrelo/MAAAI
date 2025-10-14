@@ -19,7 +19,7 @@ Pkg.status("MLJ")
 
 
 # Para la correcta ejecución de este archivo, los datasets estarán en la siguiente carpeta:
-datasetFolder = "datasets";
+datasetFolder = "D:/Escritorio/Carpeta Universidade/2025-2026/MODELOS DE APRENDIZAJE AUTOMATICO/Practica 1/DATASETS/datasets";
 # Cambiadla por la carpeta donde tengáis los datasets
 
 @assert(isdir(datasetFolder))
