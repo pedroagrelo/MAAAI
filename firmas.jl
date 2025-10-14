@@ -780,31 +780,26 @@ end;
 function streamLearning_SVM(datasetFolder::String, windowSize::Int, batchSize::Int, kernel::String, C::Real;
     degree::Real=1, gamma::Real=2, coef0::Real=0.)
  
-     # --- Inicializar memoria y flujo de batches ---
-    memory, batches = initializeStreamLearningData(datasetFolder, windowSize, batchSize)
+    (memory, batches) = initializeStreamLearningData(datasetFolder, windowSize, batchSize)
+    if length(batches) == 0
+        return Float64[]
+    end
 
-    # --- Entrenar modelo inicial con la memoria ---
     model = trainSVM(memory, kernel, C; degree=degree, gamma=gamma, coef0=coef0)
-
-    # --- Crear vector para las precisiones ---
     accuracies = zeros(Float64, length(batches))
 
-    # --- Bucle principal sobre los batches ---
     for (i, batch) in enumerate(batches)
-        # Test del modelo actual con el batch actual
         preds = predict(model, batchInputs(batch))
-        true_y = batchTargets(batch)
-        accuracies[i] = mean(preds .== true_y)
-
-        # Actualizar memoria con el batch actual
+        y_true = batchTargets(batch)
+        accuracies[i] = sum(string.(preds) .== string.(y_true)) / length(y_true)
         addBatch!(memory, batch)
-
-        # Reentrenar el modelo con la memoria actualizada (salvo después del último batch)
         if i < length(batches)
             model = trainSVM(memory, kernel, C; degree=degree, gamma=gamma, coef0=coef0)
         end
     end
 
+    @assert isa(accuracies, Vector{<:Real})
+    @assert length(accuracies) == length(batches)
     return accuracies
 end;
 
