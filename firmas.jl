@@ -615,8 +615,8 @@ predict(model, inputs::AbstractArray) = (outputs = MLJ.predict(model, MLJ.table(
 using Base.Iterators
 using StatsBase
 
-const Batch   = Tuple{AbstractMatrix{<:Real}, AbstractVector}
-const Batches = AbstractVector{<:Batch}
+Batch = Tuple{AbstractArray{<:Real,2}, AbstractArray{<:Any,1}}
+
 
 
 function batchInputs(batch::Batch)
@@ -744,15 +744,37 @@ end
 
 
 function initializeStreamLearningData(datasetFolder::String, windowSize::Int, batchSize::Int)
-    
+
+    X, y = loadStreamLearningDataset(datasetFolder; datasetType=Float64)
+    X = Float64.(X)
+    y = Bool.(y)
+
+    memory   = (X[1:windowSize, :], y[1:windowSize])
+    rest     = (X[windowSize+1:end, :], y[windowSize+1:end])
+    batchList = divideBatches(rest, batchSize; shuffleRows=false)
+    return (memory, batchList)
 end
 
 
 
 function addBatch!(memory::Batch, newBatch::Batch)
-    #
-    # Codigo a desarrollar
-    #
+    Xm, ym = memory          # Xm: N×M, ym: N
+    Xn, yn = newBatch        # Xn: k×M, yn: k
+
+    n = size(Xm, 1)
+    k = size(Xn, 1)
+
+    # Desplazar hacia el principio descartando los k más antiguos
+    if n > k
+        Xm[1:n-k, :] .= Xm[(k+1):n, :]
+        ym[1:n-k]    .= ym[(k+1):n]
+    end
+
+    # Copiar al final el nuevo lote, respetando el orden temporal
+    Xm[(n-k+1):n, :] .= Xn
+    ym[(n-k+1):n]    .= yn
+
+    return nothing
 end;
 
 function streamLearning_SVM(datasetFolder::String, windowSize::Int, batchSize::Int, kernel::String, C::Real;
