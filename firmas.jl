@@ -779,16 +779,85 @@ end;
 
 function streamLearning_SVM(datasetFolder::String, windowSize::Int, batchSize::Int, kernel::String, C::Real;
     degree::Real=1, gamma::Real=2, coef0::Real=0.)
-    #
-    # Codigo a desarrollar
-    #
+ 
+     # --- Inicializar memoria y flujo de batches ---
+    memory, batches = initializeStreamLearningData(datasetFolder, windowSize, batchSize)
+
+    # --- Entrenar modelo inicial con la memoria ---
+    model = trainSVM(memory, kernel, C; degree=degree, gamma=gamma, coef0=coef0)
+
+    # --- Crear vector para las precisiones ---
+    accuracies = zeros(Float64, length(batches))
+
+    # --- Bucle principal sobre los batches ---
+    for (i, batch) in enumerate(batches)
+        # Test del modelo actual con el batch actual
+        preds = predict(model, batchInputs(batch))
+        true_y = batchTargets(batch)
+        accuracies[i] = mean(preds .== true_y)
+
+        # Actualizar memoria con el batch actual
+        addBatch!(memory, batch)
+
+        # Reentrenar el modelo con la memoria actualizada (salvo después del último batch)
+        if i < length(batches)
+            model = trainSVM(memory, kernel, C; degree=degree, gamma=gamma, coef0=coef0)
+        end
+    end
+
+    return accuracies
 end;
 
 function streamLearning_ISVM(datasetFolder::String, windowSize::Int, batchSize::Int, kernel::String, C::Real;
     degree::Real=1, gamma::Real=2, coef0::Real=0.)
-    #
-    # Codigo a desarrollar
-    #
+    
+    # Inicialización (warm start)
+    initialBatch, batches = initializeStreamLearningData(datasetFolder, batchSize, batchSize)
+
+    # Entrenamiento inicial (warm start)
+    model, supportVectors, (_, indicesSupportVectorsInFirstBatch) =
+        trainSVM(initialBatch, kernel, C; degree=degree, gamma=gamma, coef0=coef0)
+
+    # Vector de edades para el initialBatch (descendente: batchSize ... 1)
+    ages = collect(batchSize:-1:1)
+    supportAges = isempty(indicesSupportVectorsInFirstBatch) ? Int[] : ages[indicesSupportVectorsInFirstBatch]
+
+    # Vector de precisiones
+    accuracies = zeros(Float64, length(batches))
+
+    # Bucle principal (único bucle)
+    for (i, batch) in enumerate(batches)
+        # Evaluación
+        preds = predict(model, batchInputs(batch))
+        accuracies[i] = mean(preds .== batchTargets(batch))
+
+        # Actualizar edades de los support vectors actuales (envejecer)
+        supportAges .+= batchLength(batch)
+
+        # Filtrar por antigüedad (mantener <= windowSize)
+        valid_indices = findall(a -> a <= windowSize, supportAges)
+        supportVectors = isempty(valid_indices) ? (Array{eltype(supportVectors[1]),2}(undef,0,size(supportVectors[1],2)), Array{eltype(supportVectors[2]),1}(undef,0)) : selectInstances(supportVectors, valid_indices)
+        supportAges = supportAges[valid_indices]
+
+        # Entrenar ISVM incremental con los supportVectors actuales
+        model, _newSupportBatch, (idxOld, idxBatch) =
+            trainSVM(batch, kernel, C; degree=degree, gamma=gamma, coef0=coef0, supportVectors=supportVectors)
+
+        # Reconstruir nuevo conjunto de support vectors siguiendo el enunciado
+        sv_from_old = isempty(idxOld)   ? (Array{eltype(supportVectors[1]),2}(undef,0,size(supportVectors[1],2)), Array{eltype(supportVectors[2]),1}(undef,0)) : selectInstances(supportVectors, Int.(idxOld))
+        sv_from_batch = isempty(idxBatch) ? (Array{eltype(batch[1]),2}(undef,0,size(batch[1],2)), Array{eltype(batch[2]),1}(undef,0)) : selectInstances(batch, Int.(idxBatch))
+        supportVectors = joinBatches(sv_from_old, sv_from_batch)
+
+        # Actualizar vector de edades para los nuevos support vectors
+        new_batch_ages = collect(batchLength(batch):-1:1)
+        new_batch_ages_selected = isempty(idxBatch) ? Int[] : new_batch_ages[Int.(idxBatch)]
+        supportAges = vcat( isempty(idxOld) ? Int[] : supportAges[Int.(idxOld)], new_batch_ages_selected )
+
+        # Comprobación defensiva
+        @assert length(supportAges) == batchLength(supportVectors)
+    end
+
+    return accuracies
 end;
 
 function euclideanDistances(dataset::Batch, instance::AbstractArray{<:Real,1})
