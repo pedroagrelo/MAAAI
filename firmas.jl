@@ -745,8 +745,8 @@ end
 
 function initializeStreamLearningData(datasetFolder::String, windowSize::Int, batchSize::Int)
 
-    X, y = loadStreamLearningDataset(datasetFolder; datasetType=Float64)
-    X = Float64.(X)
+    X, y = loadStreamLearningDataset(datasetFolder)
+    X = Float32.(X)
     y = Bool.(y)
 
     memory   = (X[1:windowSize, :], y[1:windowSize])
@@ -786,6 +786,7 @@ function streamLearning_SVM(datasetFolder::String, windowSize::Int, batchSize::I
     end
 
     model = trainSVM(memory, kernel, C; degree=degree, gamma=gamma, coef0=coef0)
+    model = model[1] #extraemos el machine
     accuracies = zeros(Float64, length(batches))
 
     for (i, batch) in enumerate(batches)
@@ -795,6 +796,7 @@ function streamLearning_SVM(datasetFolder::String, windowSize::Int, batchSize::I
         addBatch!(memory, batch)
         if i < length(batches)
             model = trainSVM(memory, kernel, C; degree=degree, gamma=gamma, coef0=coef0)
+            model = model[1] #extraemos el machine
         end
     end
 
