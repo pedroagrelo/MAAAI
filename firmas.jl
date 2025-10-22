@@ -872,10 +872,28 @@ end
 
 
 function nearestElements(dataset::Batch, instance::AbstractArray{<:Real,1}, k::Int)
-    #
-    # Codigo a desarrollar
-    #
-end;
+    # calcular distancias (se asume que euclideanDistances devuelve un Vector{<:Real})
+    dists = euclideanDistances(dataset, instance)
+
+    n = length(dists)
+    # si no hay instancias, devolver un Batch vacío mediante selectInstances con índices vacíos
+    if n == 0
+        return selectInstances(dataset, Int[])
+    end
+
+    # asegurar k en rango [1, n]
+    k_clamped = clamp(k, 1, n)
+
+    # obtener índices de los k más pequeños (no necesariamente ordenados)
+    idx_k = partialsortperm(dists, 1:k_clamped)
+
+    # ordenar esos índices por distancia ascendente (de más cercano a más lejano)
+    idx_sorted = sort(idx_k, by = i -> dists[i])
+
+    # seleccionar y devolver el sub-batch
+    return selectInstances(dataset, idx_sorted)
+end
+
 
 function predictKNN(dataset::Batch, instance::AbstractArray{<:Real,1}, k::Int)
     #
