@@ -896,21 +896,34 @@ end
 
 
 function predictKNN(dataset::Batch, instance::AbstractArray{<:Real,1}, k::Int)
-    #
-    # Codigo a desarrollar
-    #
+    nearest = nearestElements(dataset, instance, k)
+    labels  = batchTargets(nearest)
+    return mode(labels)
 end;
+
 
 function predictKNN(dataset::Batch, instances::AbstractArray{<:Real,2}, k::Int)
-    #
-    # Codigo a desarrollar
-    #
+    return [predictKNN(dataset, row, k) for row in eachrow(instances)]
 end;
 
+
 function streamLearning_KNN(datasetFolder::String, windowSize::Int, batchSize::Int, k::Int)
-    #
-    # Codigo a desarrollar
-    #
+    memory, batches = initializeStreamLearningData(datasetFolder, windowSize, batchSize)
+    if length(batches) == 0
+        return Float64[]
+    end
+
+    accuracies = zeros(Float64, length(batches))
+
+    for (i, batch) in enumerate(batches)
+        preds = predictKNN(memory, batchInputs(batch), k)
+        y_true = batchTargets(batch)
+        accuracies[i] = sum(preds .== y_true) / length(y_true)
+
+        addBatch!(memory, batch)
+    end
+
+    return accuracies
 end;
 
 
