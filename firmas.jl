@@ -8,6 +8,7 @@ import FileIO.load
 using DelimitedFiles
 using JLD2
 using Images
+using CategoricalArrays
 
 
 function fileNamesFolder(folderName::String, extension::String)
@@ -948,8 +949,10 @@ function predictKNN_SVM(dataset::Batch, instance::AbstractArray{<:Real,1}, k::In
 
     preds = MLJ.predict(mach, MLJ.table(reshape(instance, 1, :)))
 
-    return preds[1]
-end;
+    return unwrap(preds[1])
+end
+
+
 
 function predictKNN_SVM(dataset::Batch, instances::AbstractArray{<:Real,2}, k::Int, C::Real)
     [predictKNN_SVM(dataset, row, k, C) for row in eachrow(instances)]
