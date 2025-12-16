@@ -10,7 +10,7 @@ numpy = "<2"
     [dependencies.python]
     channel = "conda-forge"
     build = "*cp*"
-    version = ">=3.10,<3.14, 3.12"
+    version = "3.12, >=3.10,<3.14"
 
 [project]
 name = ".CondaPkg"
